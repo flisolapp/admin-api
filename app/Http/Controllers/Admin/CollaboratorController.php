@@ -4,9 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Collaborator;
-use App\Models\Person;
-use Illuminate\Http\Request;
+use App\Models\CollaboratorArea;
+use App\Models\CollaboratorAvailability;
+use App\Models\CollaborationArea;
+use App\Models\CollaborationShift;
+use App\Models\People;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class CollaboratorController extends Controller
@@ -14,11 +18,72 @@ class CollaboratorController extends Controller
     /** GET /api/records/collaborators */
     public function index(Request $request): JsonResponse
     {
-        $collaborators = Collaborator::with('person')
-            ->when($request->edition_id, fn($q, $id) => $q->where('edition_id', $id))
-            ->orderByDesc('id')
-            ->get()
-            ->map(fn($c) => $this->format($c));
+        $data = $request->validate([
+            'edition_id'      => ['nullable', 'integer', 'exists:editions,id'],
+            'page'            => ['nullable', 'integer', 'min:1'],
+            'per_page'        => ['nullable', 'integer', 'min:1', 'max:100'],
+            'search'          => ['nullable', 'string', 'max:255'],
+            'approved'       => ['nullable', 'boolean'],
+            'confirmed'       => ['nullable', 'boolean'],
+            'sort_by'         => ['nullable', 'string', 'in:id,name,email,phone,federal_code,approved,confirmed'],
+            'sort_direction'  => ['nullable', 'string', 'in:asc,desc'],
+        ]);
+
+        $perPage = (int) ($data['per_page'] ?? 10);
+        $sortBy = $data['sort_by'] ?? 'id';
+        $sortDirection = $data['sort_direction'] ?? 'desc';
+
+        $query = Collaborator::query()
+            ->with([
+                'person',
+                'collaborationAreas:id,name',
+                'collaborationShifts:id,name',
+            ])
+            ->join('people', 'people.id', '=', 'collaborators.people_id')
+            ->select('collaborators.*')
+            ->when(
+                !empty($data['edition_id']),
+                fn($q) => $q->where('collaborators.edition_id', $data['edition_id'])
+            )
+            ->when(
+                array_key_exists('approved', $data),
+                fn($q) => $data['approved']
+                    ? $q->whereNotNull('collaborators.approved_at')
+                    : $q->whereNull('collaborators.approved_at')
+            )
+            ->when(
+                array_key_exists('confirmed', $data),
+                fn($q) => $data['confirmed']
+                    ? $q->whereNotNull('collaborators.confirmed_at')
+                    : $q->whereNull('collaborators.confirmed_at')
+            )
+            ->when(
+                !empty($data['search']),
+                function ($q) use ($data) {
+                    $search = trim($data['search']);
+
+                    $q->where(function ($sub) use ($search) {
+                        $sub->where('people.name', 'like', "%{$search}%")
+                            ->orWhere('people.email', 'like', "%{$search}%")
+                            ->orWhere('people.phone', 'like', "%{$search}%")
+                            ->orWhere('people.federal_code', 'like', "%{$search}%")
+                            ->orWhereHas('collaborationAreas', function ($areaQuery) use ($search) {
+                                $areaQuery->where('name', 'like', "%{$search}%");
+                            })
+                            ->orWhereHas('collaborationShifts', function ($shiftQuery) use ($search) {
+                                $shiftQuery->where('name', 'like', "%{$search}%");
+                            });
+                    });
+                }
+            );
+
+        $this->applySorting($query, $sortBy, $sortDirection);
+
+        $collaborators = $query->paginate($perPage);
+
+        $collaborators->getCollection()->transform(
+            fn(Collaborator $collaborator) => $this->format($collaborator)
+        );
 
         return response()->json($collaborators);
     }
@@ -26,7 +91,12 @@ class CollaboratorController extends Controller
     /** GET /api/records/collaborators/{id} */
     public function show(Collaborator $collaborator): JsonResponse
     {
-        $collaborator->load('person');
+        $collaborator->load([
+            'person',
+            'collaborationAreas:id,name',
+            'collaborationShifts:id,name',
+        ]);
+
         return response()->json($this->format($collaborator));
     }
 
@@ -34,89 +104,239 @@ class CollaboratorController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'name'       => ['required', 'string', 'max:200'],
-            'email'      => ['required', 'email', 'max:121'],
-            'phone'      => ['required', 'string', 'max:20'],
-            'cpf'        => ['nullable', 'string', 'max:14'],
-            'role'       => ['required', 'string', 'max:80'],
-            'edition_id' => ['required', 'exists:editions,id'],
+            'name'        => ['required', 'string', 'max:200'],
+            'email'       => ['required', 'email', 'max:121'],
+            'phone'       => ['required', 'string', 'max:20'],
+            'federal_code'=> ['nullable', 'string', 'max:20'],
+            'edition_id'  => ['required', 'exists:editions,id'],
+            'areas'       => ['nullable', 'array'],
+            'areas.*'     => ['integer', 'exists:collaboration_areas,id'],
+            'shifts'      => ['nullable', 'array'],
+            'shifts.*'    => ['integer', 'exists:collaboration_shifts,id'],
         ]);
 
         $collaborator = DB::transaction(function () use ($data) {
-            $person = Person::create([
-                'name'  => $data['name'],
-                'email' => $data['email'],
-                'phone' => $data['phone'],
-                'cpf'   => $data['cpf'] ?? null,
+            $person = People::create([
+                'name'         => $data['name'],
+                'email'        => $data['email'],
+                'phone'        => $data['phone'],
+                'federal_code' => $data['federal_code'] ?? null,
+                'use_free'     => true,
             ]);
 
-            return Collaborator::create([
-                'person_id'  => $person->id,
-                'edition_id' => $data['edition_id'],
-                'role'       => $data['role'],
-                'confirmed'  => false,
+            $collaborator = Collaborator::create([
+                'people_id'   => $person->id,
+                'edition_id'  => $data['edition_id'],
+                'approved_at'=> null,
+                'confirmed_at'=> null,
+            ]);
+
+            foreach ($data['areas'] ?? [] as $areaId) {
+                CollaboratorArea::create([
+                    'collaborator_id'       => $collaborator->id,
+                    'collaboration_area_id' => $areaId,
+                ]);
+            }
+
+            foreach ($data['shifts'] ?? [] as $shiftId) {
+                CollaboratorAvailability::create([
+                    'collaborator_id'      => $collaborator->id,
+                    'collaborator_shift_id'=> $shiftId,
+                ]);
+            }
+
+            return $collaborator->load([
+                'person',
+                'collaborationAreas:id,name',
+                'collaborationShifts:id,name',
             ]);
         });
 
-        return response()->json($this->format($collaborator->load('person')), 201);
+        return response()->json($this->format($collaborator), 201);
     }
 
     /** PUT/PATCH /api/records/collaborators/{id} */
     public function update(Request $request, Collaborator $collaborator): JsonResponse
     {
         $data = $request->validate([
-            'name'  => ['sometimes', 'string', 'max:200'],
-            'email' => ['sometimes', 'email', 'max:121'],
-            'phone' => ['sometimes', 'string', 'max:20'],
-            'cpf'   => ['nullable', 'string', 'max:14'],
-            'role'  => ['sometimes', 'string', 'max:80'],
+            'name'         => ['sometimes', 'string', 'max:200'],
+            'email'        => ['sometimes', 'email', 'max:121'],
+            'phone'        => ['sometimes', 'string', 'max:20'],
+            'federal_code' => ['nullable', 'string', 'max:20'],
+            'areas'        => ['nullable', 'array'],
+            'areas.*'      => ['integer', 'exists:collaboration_areas,id'],
+            'shifts'       => ['nullable', 'array'],
+            'shifts.*'     => ['integer', 'exists:collaboration_shifts,id'],
         ]);
 
         DB::transaction(function () use ($data, $collaborator) {
-            $personFields = array_filter([
-                'name'  => $data['name']  ?? null,
-                'email' => $data['email'] ?? null,
-                'phone' => $data['phone'] ?? null,
-                'cpf'   => $data['cpf']   ?? null,
-            ]);
-            if ($personFields) {
+            $personFields = [];
+
+            if (array_key_exists('name', $data)) {
+                $personFields['name'] = $data['name'];
+            }
+
+            if (array_key_exists('email', $data)) {
+                $personFields['email'] = $data['email'];
+            }
+
+            if (array_key_exists('phone', $data)) {
+                $personFields['phone'] = $data['phone'];
+            }
+
+            if (array_key_exists('federal_code', $data)) {
+                $personFields['federal_code'] = $data['federal_code'];
+            }
+
+            if (!empty($personFields)) {
                 $collaborator->person->update($personFields);
             }
-            if (isset($data['role'])) {
-                $collaborator->update(['role' => $data['role']]);
+
+            if (array_key_exists('areas', $data)) {
+                CollaboratorArea::where('collaborator_id', $collaborator->id)->delete();
+
+                foreach ($data['areas'] ?? [] as $areaId) {
+                    CollaboratorArea::create([
+                        'collaborator_id'       => $collaborator->id,
+                        'collaboration_area_id' => $areaId,
+                    ]);
+                }
+            }
+
+            if (array_key_exists('shifts', $data)) {
+                CollaboratorAvailability::where('collaborator_id', $collaborator->id)->delete();
+
+                foreach ($data['shifts'] ?? [] as $shiftId) {
+                    CollaboratorAvailability::create([
+                        'collaborator_id'       => $collaborator->id,
+                        'collaborator_shift_id' => $shiftId,
+                    ]);
+                }
             }
         });
 
-        return response()->json($this->format($collaborator->load('person')));
+        return response()->json(
+            $this->format(
+                $collaborator->load([
+                    'person',
+                    'collaborationAreas:id,name',
+                    'collaborationShifts:id,name',
+                ])
+            )
+        );
+    }
+
+    /** PATCH /api/records/collaborators/{id}/approve */
+    public function approve(Request $request, Collaborator $collaborator): JsonResponse
+    {
+        $data = $request->validate([
+            'approved' => ['required', 'boolean'],
+        ]);
+
+        $collaborator->update([
+            'approved_at' => $data['approved'] ? now() : null,
+        ]);
+
+        return response()->json(
+            $this->format(
+                $collaborator->load([
+                    'person',
+                    'collaborationAreas:id,name',
+                    'collaborationShifts:id,name',
+                ])
+            )
+        );
     }
 
     /** PATCH /api/records/collaborators/{id}/confirm */
     public function confirm(Request $request, Collaborator $collaborator): JsonResponse
     {
-        $data = $request->validate(['confirmed' => ['required', 'boolean']]);
-        $collaborator->update($data);
+        $data = $request->validate([
+            'confirmed' => ['required', 'boolean'],
+        ]);
 
-        return response()->json($this->format($collaborator->load('person')));
+        $collaborator->update([
+            'confirmed_at' => $data['confirmed'] ? now() : null,
+        ]);
+
+        return response()->json(
+            $this->format(
+                $collaborator->load([
+                    'person',
+                    'collaborationAreas:id,name',
+                    'collaborationShifts:id,name',
+                ])
+            )
+        );
     }
 
     /** DELETE /api/records/collaborators/{id} */
     public function destroy(Collaborator $collaborator): JsonResponse
     {
         $collaborator->delete();
+
         return response()->json(null, 204);
+    }
+
+    /** GET /api/records/collaborators/metadata */
+    public function metadata(): JsonResponse
+    {
+        return response()->json([
+            'areas' => CollaborationArea::query()
+                ->whereNull('removed_at')
+                ->orderBy('name')
+                ->get(['id', 'name']),
+            'shifts' => CollaborationShift::query()
+                ->whereNull('removed_at')
+                ->orderBy('name')
+                ->get(['id', 'name']),
+        ]);
+    }
+
+    private function applySorting($query, string $sortBy, string $sortDirection): void
+    {
+        match ($sortBy) {
+            'name'         => $query->orderBy('people.name', $sortDirection),
+            'email'        => $query->orderBy('people.email', $sortDirection),
+            'phone'        => $query->orderBy('people.phone', $sortDirection),
+            'federal_code' => $query->orderBy('people.federal_code', $sortDirection),
+            'approved'    => $query->orderByRaw(
+                "CASE WHEN collaborators.approved_at IS NULL THEN 0 ELSE 1 END {$sortDirection}"
+            ),
+            'confirmed'    => $query->orderByRaw(
+                "CASE WHEN collaborators.confirmed_at IS NULL THEN 0 ELSE 1 END {$sortDirection}"
+            ),
+            default        => $query->orderBy('collaborators.id', $sortDirection),
+        };
     }
 
     private function format(Collaborator $c): array
     {
         return [
-            'id'         => $c->id,
-            'name'       => $c->person->name,
-            'email'      => $c->person->email,
-            'phone'      => $c->person->phone,
-            'cpf'        => $c->person->cpf,
-            'role'       => $c->role,
-            'confirmed'  => (bool) $c->confirmed,
-            'edition_id' => $c->edition_id,
+            'id'            => $c->id,
+            'edition_id'    => $c->edition_id,
+            'name'          => $c->person?->name,
+            'email'         => $c->person?->email,
+            'phone'         => $c->person?->phone,
+            'federal_code'  => $c->person?->federal_code,
+            'approved'     => !is_null($c->approved_at),
+            'approved_at'  => optional($c->approved_at)?->toIso8601String(),
+            'confirmed'     => !is_null($c->confirmed_at),
+            'confirmed_at'  => optional($c->confirmed_at)?->toIso8601String(),
+            'areas'         => $c->collaborationAreas
+                ->map(fn($area) => [
+                    'id' => $area->id,
+                    'name' => $area->name,
+                ])
+                ->values()
+                ->all(),
+            'shifts'        => $c->collaborationShifts
+                ->map(fn($shift) => [
+                    'id' => $shift->id,
+                    'name' => $shift->name,
+                ])
+                ->values()
+                ->all(),
         ];
     }
 }

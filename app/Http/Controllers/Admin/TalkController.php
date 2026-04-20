@@ -25,8 +25,9 @@ class TalkController extends Controller
             'search'         => ['nullable', 'string', 'max:255'],
             'kind'           => ['nullable', 'string', 'in:T,W'],
             'shift'          => ['nullable', 'string', 'in:M,A,W'],
+            'approved'       => ['nullable', 'boolean'],
             'confirmed'      => ['nullable', 'boolean'],
-            'sort_by'        => ['nullable', 'string', 'in:id,title,kind,shift,confirmed,created_at,updated_at'],
+            'sort_by'        => ['nullable', 'string', 'in:id,title,kind,shift,approved,confirmed,created_at,updated_at'],
             'sort_direction' => ['nullable', 'string', 'in:asc,desc'],
         ]);
 
@@ -46,19 +47,24 @@ class TalkController extends Controller
             ->leftJoin('people', 'people.id', '=', 'speaker_talks.speaker_id')
             ->whereNull('talks.removed_at')
             ->when(isset($data['edition_id']), fn($q) =>
-            $q->where('talks.edition_id', $data['edition_id'])
+                $q->where('talks.edition_id', $data['edition_id'])
             )
             ->when(isset($data['kind']), fn($q) =>
-            $q->where('talks.kind', $data['kind'])
+                $q->where('talks.kind', $data['kind'])
             )
             ->when(isset($data['shift']), fn($q) =>
-            $q->where('talks.shift', $data['shift'])
+                $q->where('talks.shift', $data['shift'])
             )
+            ->when(isset($data['approved']), fn($q) =>
+                $data['approved']
+                    ? $q->whereNotNull('talks.approved_at')
+                    : $q->whereNull('talks.approved_at')
+                )
             ->when(isset($data['confirmed']), fn($q) =>
-            $data['confirmed']
-                ? $q->whereNotNull('talks.confirmed_at')
-                : $q->whereNull('talks.confirmed_at')
-            )
+                $data['confirmed']
+                    ? $q->whereNotNull('talks.confirmed_at')
+                    : $q->whereNull('talks.confirmed_at')
+                )
             ->when($search !== '', fn($q) =>
             $q->where(fn($sub) =>
             $sub->where('talks.title',        'like', '%' . $search . '%')
@@ -82,6 +88,13 @@ class TalkController extends Controller
 
             case 'shift':
                 $talks->orderBy('talks.shift', $sortDirection);
+                break;
+
+            case 'approved':
+                // approved_at is a datetime — sort by presence, matching the presented_at pattern
+                $talks->orderByRaw(
+                    'CASE WHEN talks.approved_at IS NULL THEN 0 ELSE 1 END ' . $sortDirection
+                );
                 break;
 
             case 'confirmed':
@@ -230,6 +243,28 @@ class TalkController extends Controller
     }
 
     /**
+     * PATCH /api/talks/{talk}/approve
+     */
+    public function approve(Request $request, Talk $talk): JsonResponse
+    {
+        if ($talk->removed_at !== null) {
+            return response()->json(['message' => 'Talk not found'], 404);
+        }
+
+        $data = $request->validate([
+            'approved' => ['required', 'boolean'],
+        ]);
+
+        // approved_at is not in $fillable — set directly to bypass mass-assignment guard
+        $talk->approved_at = $data['approved'] ? now() : null;
+        $talk->save();
+
+        $talk->load(['speakers', 'talkSubject']);
+
+        return response()->json($this->format($talk));
+    }
+
+    /**
      * PATCH /api/talks/{talk}/confirm
      */
     public function confirm(Request $request, Talk $talk): JsonResponse
@@ -337,6 +372,8 @@ class TalkController extends Controller
             'description'       => $t->description,
             'shift'             => $t->shift,
             'kind'              => $t->kind,
+            'approved'          => $t->approved_at !== null,
+            'approved_at'       => $t->approved_at,
             'confirmed'         => $t->confirmed_at !== null,
             'confirmed_at'      => $t->confirmed_at,
             'talk_subject_id'   => $t->talk_subject_id,

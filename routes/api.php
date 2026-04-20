@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\EditionController;
 use App\Http\Controllers\Admin\ParticipantController;
 use App\Http\Controllers\Admin\SpeakerController;
 use App\Http\Controllers\Admin\CollaboratorController;
+use App\Http\Controllers\Admin\OrganizerController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\TalkController;
 use App\Http\Controllers\Admin\ConfirmationController;
@@ -40,25 +41,36 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('records')->name('records.')->group(function () {
 
         Route::apiResource('participants',  ParticipantController::class);
+        Route::patch('participants/{participant}/confirm',
+            [ParticipantController::class, 'confirm'])->name('participants.confirm');
 
         Route::get('talks/speaker-photo/{person}', [TalkController::class, 'speakerPhoto'])
             ->name('talks.speaker-photo');                        // → records.talks.speaker-photo
         Route::get('talks/{talk}/slide', [TalkController::class, 'slide'])
             ->name('talks.slide');                               // → records.talks.slide
         Route::apiResource('talks', TalkController::class);
-
-        Route::apiResource('speakers',      SpeakerController::class);
-        Route::apiResource('collaborators', CollaboratorController::class);
-        Route::apiResource('users',         UserController::class);
-
-        Route::patch('participants/{participant}/confirm',
-            [ParticipantController::class, 'confirm'])->name('participants.confirm');
-
+        Route::patch('talks/{talk}/approve', [TalkController::class, 'approve'])
+            ->name('talks.approve');
         Route::patch('talks/{talk}/confirm', [TalkController::class, 'confirm'])
             ->name('talks.confirm');
 
+        Route::apiResource('speakers',      SpeakerController::class);
+
+        Route::get('collaborators/metadata', [CollaboratorController::class, 'metadata'])
+            ->name('collaborators.metadata');
+        Route::apiResource('collaborators', CollaboratorController::class);
+        Route::patch('collaborators/{collaborator}/approve',
+            [CollaboratorController::class, 'approve'])->name('collaborators.approve');
         Route::patch('collaborators/{collaborator}/confirm',
             [CollaboratorController::class, 'confirm'])->name('collaborators.confirm');
+
+        Route::apiResource('organizers',  OrganizerController::class);
+        // Route::patch('organizers/{organizer}/confirm',
+        //     [OrganizerController::class, 'confirm'])->name('organizers.confirm');
+
+        Route::apiResource('users',         UserController::class);
+        Route::patch('users/{user}/reset-password', [UserController::class, 'resetPassword'])
+            ->name('users.reset-password');
     });
 
     // Confirmation / credenciamento list
