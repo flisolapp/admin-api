@@ -20,10 +20,10 @@ use App\Http\Controllers\Admin\ConfirmationController;
 // })->middleware('auth:sanctum');
 
 // ── Public ──────────────────────────────────────────────────────────────
-Route::post('/auth/register', [AuthController::class, 'register']);
+// Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login',  [AuthController::class, 'login']);
-Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
-Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
+// Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+// Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
 
 // ── Protected ───────────────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
@@ -40,6 +40,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('records')->name('records.')->group(function () {
 
         Route::apiResource('participants',  ParticipantController::class);
+
+        Route::get('talks/speaker-photo/{person}', [TalkController::class, 'speakerPhoto'])
+            ->name('talks.speaker-photo');                        // → records.talks.speaker-photo
+        Route::get('talks/{talk}/slide', [TalkController::class, 'slide'])
+            ->name('talks.slide');                               // → records.talks.slide
+        Route::apiResource('talks', TalkController::class);
+
         Route::apiResource('speakers',      SpeakerController::class);
         Route::apiResource('collaborators', CollaboratorController::class);
         Route::apiResource('users',         UserController::class);
@@ -47,14 +54,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('participants/{participant}/confirm',
             [ParticipantController::class, 'confirm'])->name('participants.confirm');
 
+        Route::patch('talks/{talk}/confirm', [TalkController::class, 'confirm'])
+            ->name('talks.confirm');
+
         Route::patch('collaborators/{collaborator}/confirm',
             [CollaboratorController::class, 'confirm'])->name('collaborators.confirm');
     });
-
-    // Talks
-    Route::apiResource('talks', TalkController::class);
-    Route::patch('talks/{talk}/confirm', [TalkController::class, 'confirm'])
-        ->name('talks.confirm');
 
     // Confirmation / credenciamento list
     Route::prefix('confirmation')->name('confirmation.')->group(function () {

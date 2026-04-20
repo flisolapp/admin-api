@@ -3,15 +3,25 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SpeakerTalk extends Model
 {
+    use SoftDeletes;
+
+    const DELETED_AT = 'removed_at';
 
     protected $fillable = [
-        'speaker_id', 'talk_id', 'created_at', 'updated_at', 'removed_at'
+        'speaker_id',
+        'talk_id',
+        'removed_at',
     ];
 
-    public function person()
+    protected $casts = [
+        'removed_at' => 'datetime',
+    ];
+
+    public function speaker()
     {
         return $this->belongsTo(People::class, 'speaker_id');
     }
@@ -20,5 +30,4 @@ class SpeakerTalk extends Model
     {
         return $this->belongsTo(Talk::class, 'talk_id');
     }
-
 }

@@ -3,12 +3,33 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PeopleCertificate extends Model
 {
+    use SoftDeletes;
+
+    const DELETED_AT = 'removed_at';
 
     protected $fillable = [
-        'people_id', 'edition_id', 'organizer_id', 'collaborator_id', 'talk_id', 'participant_id', 'name', 'federal_code', 'code', 'sent_at', 'last_view_at', 'created_at', 'updated_at', 'removed_at'
+        'people_id',
+        'edition_id',
+        'organizer_id',
+        'collaborator_id',
+        'talk_id',
+        'participant_id',
+        'name',
+        'federal_code',
+        'code',
+        'sent_at',
+        'last_view_at',
+        'removed_at',
+    ];
+
+    protected $casts = [
+        'sent_at'      => 'datetime',
+        'last_view_at' => 'datetime',
+        'removed_at'   => 'datetime',
     ];
 
     public function person()
@@ -40,5 +61,4 @@ class PeopleCertificate extends Model
     {
         return $this->belongsTo(Participant::class, 'participant_id');
     }
-
 }
