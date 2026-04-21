@@ -54,7 +54,7 @@ class SpeakerController extends Controller
             $speaker = Speaker::create([
                 'person_id' => $person->id,
                 'edition_id' => $data['edition_id'],
-                'confirmed' => false,
+                'presented' => false,
             ]);
 
             if ($request->hasFile('photo')) {
@@ -125,7 +125,7 @@ class SpeakerController extends Controller
             'email' => $s->person->email,
             'phone' => $s->person->phone,
             'cpf' => $s->person->cpf,
-            'confirmed' => (bool)$s->confirmed,
+            'presented' => (bool)$s->presented,
             'edition_id' => $s->edition_id,
             'photo_url' => $s->photo_path ? Storage::disk('s3')->url($s->photo_path) : null,
             'talks' => $s->talks->map(fn($t) => [

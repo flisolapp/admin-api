@@ -22,7 +22,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'confirmed', Password::defaults()],
+            'password' => ['required', 'presented', Password::defaults()],
             // 'role' => ['sometimes', Rule::in([User::ROLE_STORE_OWNER, User::ROLE_CUSTOMER])],
         ]);
 
@@ -193,7 +193,7 @@ class AuthController extends Controller
     {
 //        $request->validate([
 //            'current_password' => ['required'],
-//            'password' => ['required', 'confirmed', Password::defaults()],
+//            'password' => ['required', 'presented', Password::defaults()],
 //        ]);
 //
 //        $user = $request->user();
@@ -223,7 +223,7 @@ class AuthController extends Controller
             'current_password' => ['required', 'current_password:sanctum'],
             'password' => [
                 'required',
-                'confirmed',
+                'presented',
                 Password::min(8)
                     ->letters()
                     ->mixedCase()
@@ -234,7 +234,7 @@ class AuthController extends Controller
             'current_password.required' => 'A senha atual é obrigatória.',
             'current_password.current_password' => 'A senha atual está incorreta.',
             'password.required' => 'A nova senha é obrigatória.',
-            'password.confirmed' => 'A confirmação da nova senha não confere.',
+            'password.presented' => 'A confirmação da nova senha não confere.',
         ]);
 
         $user->update([
@@ -271,7 +271,7 @@ class AuthController extends Controller
         $request->validate([
             'email' => ['required', 'email'],
             'token' => ['required', 'string'],
-            'password' => ['required', 'confirmed', Password::defaults()],
+            'password' => ['required', 'presented', Password::defaults()],
         ]);
 
         // Aqui você validaria o token e resetaria a senha.

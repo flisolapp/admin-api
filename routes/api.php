@@ -14,7 +14,8 @@ use App\Http\Controllers\Admin\CollaboratorController;
 use App\Http\Controllers\Admin\OrganizerController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\TalkController;
-use App\Http\Controllers\Admin\ConfirmationController;
+// use App\Http\Controllers\Admin\ConfirmationController;
+use App\Http\Controllers\Admin\AttendanceController;
 
 // Route::get('/user', function (Request $request) {
 //     return $request->user();
@@ -41,8 +42,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('records')->name('records.')->group(function () {
 
         Route::apiResource('participants',  ParticipantController::class);
-        Route::patch('participants/{participant}/confirm',
-            [ParticipantController::class, 'confirm'])->name('participants.confirm');
+//        Route::patch('participants/{participant}/confirm',
+//            [ParticipantController::class, 'confirm'])->name('participants.confirm');
 
         Route::get('talks/speaker-photo/{person}', [TalkController::class, 'speakerPhoto'])
             ->name('talks.speaker-photo');                        // → records.talks.speaker-photo
@@ -51,8 +52,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('talks', TalkController::class);
         Route::patch('talks/{talk}/approve', [TalkController::class, 'approve'])
             ->name('talks.approve');
-        Route::patch('talks/{talk}/confirm', [TalkController::class, 'confirm'])
-            ->name('talks.confirm');
+//        Route::patch('talks/{talk}/confirm', [TalkController::class, 'confirm'])
+//            ->name('talks.confirm');
 
         Route::apiResource('speakers',      SpeakerController::class);
 
@@ -61,8 +62,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('collaborators', CollaboratorController::class);
         Route::patch('collaborators/{collaborator}/approve',
             [CollaboratorController::class, 'approve'])->name('collaborators.approve');
-        Route::patch('collaborators/{collaborator}/confirm',
-            [CollaboratorController::class, 'confirm'])->name('collaborators.confirm');
+//        Route::patch('collaborators/{collaborator}/confirm',
+//            [CollaboratorController::class, 'confirm'])->name('collaborators.confirm');
 
         Route::apiResource('organizers',  OrganizerController::class);
         // Route::patch('organizers/{organizer}/confirm',
@@ -73,14 +74,21 @@ Route::middleware('auth:sanctum')->group(function () {
             ->name('users.reset-password');
     });
 
-    // Confirmation / credenciamento list
-    Route::prefix('confirmation')->name('confirmation.')->group(function () {
-        Route::get('participants',  [ConfirmationController::class, 'participants'])
-            ->name('participants');
-        Route::get('collaborators', [ConfirmationController::class, 'collaborators'])
-            ->name('collaborators');
-        Route::get('talks',         [ConfirmationController::class, 'talks'])
-            ->name('talks');
+//    // Confirmation / credenciamento list
+//    Route::prefix('confirmation')->name('confirmation.')->group(function () {
+//        Route::get('participants',  [ConfirmationController::class, 'participants'])
+//            ->name('participants');
+//        Route::get('collaborators', [ConfirmationController::class, 'collaborators'])
+//            ->name('collaborators');
+//        Route::get('talks',         [ConfirmationController::class, 'talks'])
+//            ->name('talks');
+//    });
+
+    // Attendance
+    Route::prefix('attendance')->name('attendance.')->group(function () {
+        Route::get('/', [AttendanceController::class, 'index'])->name('index');
+        Route::patch('{kind}/{id}/check-in', [AttendanceController::class, 'toggleCheckIn'])
+            ->name('check-in');
     });
 
     // Certificates

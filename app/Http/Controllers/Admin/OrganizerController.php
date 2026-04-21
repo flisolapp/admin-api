@@ -21,7 +21,7 @@ class OrganizerController extends Controller
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
             'search' => ['nullable', 'string', 'max:255'],
-            'sort_by' => ['nullable', 'string', 'in:id,name,email,phone,federal_code,confirmed,created_at,updated_at'],
+            'sort_by' => ['nullable', 'string', 'in:id,name,email,phone,federal_code,presented,created_at,updated_at'],
             'sort_direction' => ['nullable', 'string', 'in:asc,desc'],
         ]);
 
@@ -67,7 +67,7 @@ class OrganizerController extends Controller
                 $organizers->orderBy('people.federal_code', $sortDirection);
                 break;
 
-//            case 'confirmed':
+//            case 'presented':
 //                $organizers->orderByRaw(
 //                    'CASE WHEN organizers.presented_at IS NULL THEN 0 ELSE 1 END ' . $sortDirection
 //                );
@@ -234,11 +234,11 @@ class OrganizerController extends Controller
 //        }
 //
 //        $data = $request->validate([
-//            'confirmed' => ['required', 'boolean'],
+//            'presented' => ['required', 'boolean'],
 //        ]);
 //
 //        $organizer->update([
-//            'presented_at' => $data['confirmed'] ? now() : null,
+//            'presented_at' => $data['presented'] ? now() : null,
 //        ]);
 //
 //        $organizer->load(['person', 'edition']);
@@ -268,7 +268,7 @@ class OrganizerController extends Controller
             'email' => $organizer->person?->email,
             'phone' => $organizer->person?->phone,
             'federalCode' => $organizer->person?->federal_code,
-//            'confirmed' => $organizer->presented_at !== null,
+//            'presented' => $organizer->presented_at !== null,
             'editionId' => $organizer->edition_id,
             'presentedAt' => optional($organizer->presented_at)?->toISOString(),
             'createdAt' => optional($organizer->created_at)?->toISOString(),

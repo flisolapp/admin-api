@@ -21,7 +21,7 @@ class ParticipantController extends Controller
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
             'search' => ['nullable', 'string', 'max:255'],
-            'sort_by' => ['nullable', 'string', 'in:id,name,email,phone,federal_code,confirmed,created_at,updated_at'],
+            'sort_by' => ['nullable', 'string', 'in:id,name,email,phone,federal_code,presented,created_at,updated_at'],
             'sort_direction' => ['nullable', 'string', 'in:asc,desc'],
         ]);
 
@@ -67,7 +67,7 @@ class ParticipantController extends Controller
                 $participants->orderBy('people.federal_code', $sortDirection);
                 break;
 
-            case 'confirmed':
+            case 'presented':
                 $participants->orderByRaw(
                     'CASE WHEN participants.presented_at IS NULL THEN 0 ELSE 1 END ' . $sortDirection
                 );
@@ -222,29 +222,29 @@ class ParticipantController extends Controller
         return response()->json($this->format($participant));
     }
 
-    /**
-     * PATCH /api/records/participants/{participant}/confirm
-     */
-    public function confirm(Request $request, Participant $participant): JsonResponse
-    {
-        if ($participant->removed_at !== null) {
-            return response()->json([
-                'message' => 'Participant not found',
-            ], 404);
-        }
-
-        $data = $request->validate([
-            'confirmed' => ['required', 'boolean'],
-        ]);
-
-        $participant->update([
-            'presented_at' => $data['confirmed'] ? now() : null,
-        ]);
-
-        $participant->load(['person', 'edition']);
-
-        return response()->json($this->format($participant));
-    }
+//    /**
+//     * PATCH /api/records/participants/{participant}/confirm
+//     */
+//    public function confirm(Request $request, Participant $participant): JsonResponse
+//    {
+//        if ($participant->removed_at !== null) {
+//            return response()->json([
+//                'message' => 'Participant not found',
+//            ], 404);
+//        }
+//
+//        $data = $request->validate([
+//            'presented' => ['required', 'boolean'],
+//        ]);
+//
+//        $participant->update([
+//            'presented_at' => $data['presented'] ? now() : null,
+//        ]);
+//
+//        $participant->load(['person', 'edition']);
+//
+//        return response()->json($this->format($participant));
+//    }
 
     /**
      * DELETE /api/records/participants/{participant}
@@ -274,7 +274,7 @@ class ParticipantController extends Controller
             'phone' => $participant->person?->phone,
             'federal_code' => $participant->person?->federal_code,
             'presented_at' => $participant->presented_at,
-            'confirmed' => $participant->presented_at !== null,
+            'presented' => $participant->presented_at !== null,
             'prizedraw_confirmation_at' => $participant->prizedraw_confirmation_at,
             'prizedraw_winner_at' => $participant->prizedraw_winner_at,
             'prizedraw_order' => $participant->prizedraw_order,

@@ -17,14 +17,14 @@ class Collaborator extends Model
         'audited_at',
         'audit_note',
         'approved_at',
-        'confirmed_at',
+        'presented_at',
         'removed_at',
     ];
 
     protected $casts = [
         'audited_at'   => 'datetime',
         'approved_at'  => 'datetime',
-        'confirmed_at' => 'datetime',
+        'presented_at' => 'datetime',
         'removed_at'   => 'datetime',
     ];
 

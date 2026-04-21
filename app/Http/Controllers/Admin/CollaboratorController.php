@@ -24,8 +24,8 @@ class CollaboratorController extends Controller
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
             'search' => ['nullable', 'string', 'max:255'],
             'approved' => ['nullable', 'boolean'],
-            'confirmed' => ['nullable', 'boolean'],
-            'sort_by' => ['nullable', 'string', 'in:id,name,email,phone,federal_code,approved,confirmed'],
+            'presented' => ['nullable', 'boolean'],
+            'sort_by' => ['nullable', 'string', 'in:id,name,email,phone,federal_code,approved,presented'],
             'sort_direction' => ['nullable', 'string', 'in:asc,desc'],
         ]);
 
@@ -52,10 +52,10 @@ class CollaboratorController extends Controller
                     : $q->whereNull('collaborators.approved_at')
             )
             ->when(
-                array_key_exists('confirmed', $data),
-                fn($q) => $data['confirmed']
-                    ? $q->whereNotNull('collaborators.confirmed_at')
-                    : $q->whereNull('collaborators.confirmed_at')
+                array_key_exists('presented', $data),
+                fn($q) => $data['presented']
+                    ? $q->whereNotNull('collaborators.presented_at')
+                    : $q->whereNull('collaborators.presented_at')
             )
             ->when(
                 !empty($data['search']),
@@ -128,7 +128,7 @@ class CollaboratorController extends Controller
                 'people_id' => $person->id,
                 'edition_id' => $data['edition_id'],
                 'approved_at' => null,
-                'confirmed_at' => null,
+                'presented_at' => null,
             ]);
 
             foreach ($data['areas'] ?? [] as $areaId) {
@@ -248,27 +248,27 @@ class CollaboratorController extends Controller
         );
     }
 
-    /** PATCH /api/records/collaborators/{id}/confirm */
-    public function confirm(Request $request, Collaborator $collaborator): JsonResponse
-    {
-        $data = $request->validate([
-            'confirmed' => ['required', 'boolean'],
-        ]);
-
-        $collaborator->update([
-            'confirmed_at' => $data['confirmed'] ? now() : null,
-        ]);
-
-        return response()->json(
-            $this->format(
-                $collaborator->load([
-                    'person',
-                    'collaborationAreas:id,name',
-                    'collaborationShifts:id,name',
-                ])
-            )
-        );
-    }
+//    /** PATCH /api/records/collaborators/{id}/confirm */
+//    public function confirm(Request $request, Collaborator $collaborator): JsonResponse
+//    {
+//        $data = $request->validate([
+//            'presented' => ['required', 'boolean'],
+//        ]);
+//
+//        $collaborator->update([
+//            'presented_at' => $data['presented'] ? now() : null,
+//        ]);
+//
+//        return response()->json(
+//            $this->format(
+//                $collaborator->load([
+//                    'person',
+//                    'collaborationAreas:id,name',
+//                    'collaborationShifts:id,name',
+//                ])
+//            )
+//        );
+//    }
 
     /** DELETE /api/records/collaborators/{id} */
     public function destroy(Collaborator $collaborator): JsonResponse
@@ -303,8 +303,8 @@ class CollaboratorController extends Controller
             'approved' => $query->orderByRaw(
                 "CASE WHEN collaborators.approved_at IS NULL THEN 0 ELSE 1 END {$sortDirection}"
             ),
-            'confirmed' => $query->orderByRaw(
-                "CASE WHEN collaborators.confirmed_at IS NULL THEN 0 ELSE 1 END {$sortDirection}"
+            'presented' => $query->orderByRaw(
+                "CASE WHEN collaborators.presented_at IS NULL THEN 0 ELSE 1 END {$sortDirection}"
             ),
             default => $query->orderBy('collaborators.id', $sortDirection),
         };
@@ -321,8 +321,8 @@ class CollaboratorController extends Controller
             'federal_code' => $c->person?->federal_code,
             'approved' => !is_null($c->approved_at),
             'approved_at' => optional($c->approved_at)?->toIso8601String(),
-            'confirmed' => !is_null($c->confirmed_at),
-            'confirmed_at' => optional($c->confirmed_at)?->toIso8601String(),
+            'presented' => !is_null($c->presented_at),
+            'presented_at' => optional($c->presented_at)?->toIso8601String(),
             'areas' => $c->collaborationAreas
                 ->map(fn($area) => [
                     'id' => $area->id,

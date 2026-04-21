@@ -26,8 +26,8 @@ class TalkController extends Controller
             'kind' => ['nullable', 'string', 'in:T,W'],
             'shift' => ['nullable', 'string', 'in:M,A,W'],
             'approved' => ['nullable', 'boolean'],
-            'confirmed' => ['nullable', 'boolean'],
-            'sort_by' => ['nullable', 'string', 'in:id,title,kind,shift,approved,confirmed,created_at,updated_at'],
+            'presented' => ['nullable', 'boolean'],
+            'sort_by' => ['nullable', 'string', 'in:id,title,kind,shift,approved,presented,created_at,updated_at'],
             'sort_direction' => ['nullable', 'string', 'in:asc,desc'],
         ]);
 
@@ -56,9 +56,9 @@ class TalkController extends Controller
                 ? $q->whereNotNull('talks.approved_at')
                 : $q->whereNull('talks.approved_at')
             )
-            ->when(isset($data['confirmed']), fn($q) => $data['confirmed']
-                ? $q->whereNotNull('talks.confirmed_at')
-                : $q->whereNull('talks.confirmed_at')
+            ->when(isset($data['presented']), fn($q) => $data['presented']
+                ? $q->whereNotNull('talks.presented_at')
+                : $q->whereNull('talks.presented_at')
             )
             ->when($search !== '', fn($q) => $q->where(fn($sub) => $sub->where('talks.title', 'like', '%' . $search . '%')
                 ->orWhere('talks.description', 'like', '%' . $search . '%')
@@ -90,10 +90,10 @@ class TalkController extends Controller
                 );
                 break;
 
-            case 'confirmed':
-                // confirmed_at is a datetime — sort by presence, matching the presented_at pattern
+            case 'presented':
+                // presented_at is a datetime — sort by presence, matching the presented_at pattern
                 $talks->orderByRaw(
-                    'CASE WHEN talks.confirmed_at IS NULL THEN 0 ELSE 1 END ' . $sortDirection
+                    'CASE WHEN talks.presented_at IS NULL THEN 0 ELSE 1 END ' . $sortDirection
                 );
                 break;
 
@@ -257,27 +257,27 @@ class TalkController extends Controller
         return response()->json($this->format($talk));
     }
 
-    /**
-     * PATCH /api/talks/{talk}/confirm
-     */
-    public function confirm(Request $request, Talk $talk): JsonResponse
-    {
-        if ($talk->removed_at !== null) {
-            return response()->json(['message' => 'Talk not found'], 404);
-        }
-
-        $data = $request->validate([
-            'confirmed' => ['required', 'boolean'],
-        ]);
-
-        // confirmed_at is not in $fillable — set directly to bypass mass-assignment guard
-        $talk->confirmed_at = $data['confirmed'] ? now() : null;
-        $talk->save();
-
-        $talk->load(['speakers', 'talkSubject']);
-
-        return response()->json($this->format($talk));
-    }
+//    /**
+//     * PATCH /api/talks/{talk}/confirm
+//     */
+//    public function confirm(Request $request, Talk $talk): JsonResponse
+//    {
+//        if ($talk->removed_at !== null) {
+//            return response()->json(['message' => 'Talk not found'], 404);
+//        }
+//
+//        $data = $request->validate([
+//            'presented' => ['required', 'boolean'],
+//        ]);
+//
+//        // presented_at is not in $fillable — set directly to bypass mass-assignment guard
+//        $talk->presented_at = $data['presented'] ? now() : null;
+//        $talk->save();
+//
+//        $talk->load(['speakers', 'talkSubject']);
+//
+//        return response()->json($this->format($talk));
+//    }
 
     /**
      * DELETE /api/talks/{talk}
@@ -367,8 +367,8 @@ class TalkController extends Controller
             'kind' => $t->kind,
             'approved' => $t->approved_at !== null,
             'approved_at' => $t->approved_at,
-            'confirmed' => $t->confirmed_at !== null,
-            'confirmed_at' => $t->confirmed_at,
+            'presented' => $t->presented_at !== null,
+            'presented_at' => $t->presented_at,
             'talk_subject_id' => $t->talk_subject_id,
             'talk_subject_name' => $t->talkSubject?->name,
             'slide_file_url' => $t->slide_file

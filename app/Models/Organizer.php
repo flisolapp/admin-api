@@ -14,10 +14,12 @@ class Organizer extends Model
     protected $fillable = [
         'edition_id',
         'people_id',
+        'presented_at',
         'removed_at',
     ];
 
     protected $casts = [
+        'presented_at' => 'datetime',
         'removed_at' => 'datetime',
     ];
 
