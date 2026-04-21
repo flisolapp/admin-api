@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
@@ -100,7 +101,17 @@ class AuthController extends Controller
      */
     public function me(Request $request): JsonResponse
     {
-        return response()->json($request->user()->only(['id', 'name', 'email', 'role']));
+        // return response()->json($request->user()->only(['id', 'name', 'email', 'role']));
+        /** @var User $user */
+        $user = $request->user();
+
+        return response()->json([
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
+            'isActive' => (bool) $user->is_active,
+        ]);
     }
 
     /**
@@ -109,19 +120,68 @@ class AuthController extends Controller
      */
     public function updateProfile(Request $request): JsonResponse
     {
+//        $user = $request->user();
+//
+//        $validated = $request->validate([
+//            'name' => ['sometimes', 'string', 'max:255'],
+//            'email' => ['sometimes', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
+//        ]);
+//
+//        $user->update($validated);
+//
+//        return response()->json([
+//            'success' => true,
+//            'data' => $user->fresh(),
+//            'message' => 'Perfil atualizado com sucesso',
+//        ]);
+
+        /** @var User $user */
         $user = $request->user();
 
-        $validated = $request->validate([
-            'name' => ['sometimes', 'string', 'max:255'],
-            'email' => ['sometimes', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:200'],
+            'email' => [
+                'required',
+                'string',
+                'email',
+                'max:121',
+                Rule::unique('users', 'email')
+                    ->ignore($user->id)
+                    ->whereNull('deleted_at'),
+            ],
+        ], [
+            'name.required' => 'O nome é obrigatório.',
+            'email.required' => 'O e-mail é obrigatório.',
+            'email.email' => 'Informe um e-mail válido.',
+            'email.unique' => 'Este e-mail já está em uso.',
         ]);
 
-        $user->update($validated);
+        $data['name'] = trim($data['name']);
+        $data['email'] = mb_strtolower(trim($data['email']));
+
+        if ($data['name'] === '') {
+            return response()->json([
+                'message' => 'O nome não pode ficar em branco.',
+            ], 422);
+        }
+
+        if ($data['email'] === '') {
+            return response()->json([
+                'message' => 'O e-mail não pode ficar em branco.',
+            ], 422);
+        }
+
+        $user->update([
+            'name' => $data['name'],
+            'email' => $data['email'],
+        ]);
 
         return response()->json([
-            'success' => true,
-            'data' => $user->fresh(),
-            'message' => 'Perfil atualizado com sucesso',
+            'id' => $user->fresh()->id,
+            'name' => $user->fresh()->name,
+            'email' => $user->fresh()->email,
+            'role' => $user->fresh()->role,
+            'isActive' => (bool) $user->fresh()->is_active,
         ]);
     }
 
@@ -131,29 +191,58 @@ class AuthController extends Controller
      */
     public function changePassword(Request $request): JsonResponse
     {
-        $request->validate([
-            'current_password' => ['required'],
-            'password' => ['required', 'confirmed', Password::defaults()],
-        ]);
+//        $request->validate([
+//            'current_password' => ['required'],
+//            'password' => ['required', 'confirmed', Password::defaults()],
+//        ]);
+//
+//        $user = $request->user();
+//
+//        if (!Hash::check($request->current_password, $user->password)) {
+//            throw ValidationException::withMessages([
+//                'current_password' => ['Senha atual incorreta'],
+//            ]);
+//        }
+//
+//        $user->update([
+//            'password' => $request->password,
+//        ]);
+//
+//        // Invalidar outros tokens (opcional).
+//        // $user->tokens()->where('id', '!=', $user->currentAccessTokenId())->delete();
+//
+//        return response()->json([
+//            'success' => true,
+//            'message' => 'Senha alterada com sucesso',
+//        ]);
 
+        /** @var User $user */
         $user = $request->user();
 
-        if (!Hash::check($request->current_password, $user->password)) {
-            throw ValidationException::withMessages([
-                'current_password' => ['Senha atual incorreta'],
-            ]);
-        }
-
-        $user->update([
-            'password' => $request->password,
+        $data = $request->validate([
+            'current_password' => ['required', 'current_password:sanctum'],
+            'password' => [
+                'required',
+                'confirmed',
+                Password::min(8)
+                    ->letters()
+                    ->mixedCase()
+                    ->numbers()
+                    ->symbols(),
+            ],
+        ], [
+            'current_password.required' => 'A senha atual é obrigatória.',
+            'current_password.current_password' => 'A senha atual está incorreta.',
+            'password.required' => 'A nova senha é obrigatória.',
+            'password.confirmed' => 'A confirmação da nova senha não confere.',
         ]);
 
-        // Invalidar outros tokens (opcional).
-        // $user->tokens()->where('id', '!=', $user->currentAccessTokenId())->delete();
+        $user->update([
+            'password' => Hash::make($data['password']),
+        ]);
 
         return response()->json([
-            'success' => true,
-            'message' => 'Senha alterada com sucesso',
+            'message' => 'Senha alterada com sucesso.',
         ]);
     }
 
