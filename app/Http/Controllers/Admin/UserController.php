@@ -15,9 +15,9 @@ class UserController extends Controller
     /** GET /api/records/users */
     public function index(Request $request): JsonResponse
     {
-        $perPage = (int) min(max((int) $request->integer('perPage', 10), 1), 100);
-        $page = (int) max((int) $request->integer('page', 1), 1);
-        $search = trim((string) $request->string('search', ''));
+        $perPage = (int)min(max((int)$request->integer('perPage', 10), 1), 100);
+        $page = (int)max((int)$request->integer('page', 1), 1);
+        $search = trim((string)$request->string('search', ''));
         $sortBy = $request->string('sortBy', 'id')->toString();
         $sortDirection = strtolower($request->string('sortDirection', 'desc')->toString()) === 'asc'
             ? 'asc'
@@ -56,18 +56,18 @@ class UserController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'name'  => ['required', 'string', 'max:200'],
+            'name' => ['required', 'string', 'max:200'],
             'email' => ['required', 'email', 'max:121', 'unique:users,email'],
-            'role'  => ['required', Rule::in(['super_admin', 'admin', 'organizer', 'credential'])],
+            'role' => ['required', Rule::in(['super_admin', 'admin', 'organizer', 'credential'])],
         ]);
 
         $plainPassword = Str::password(12, true, true, true, false);
 
         $user = User::create([
-            'name'      => $data['name'],
-            'email'     => $data['email'],
-            'password'  => Hash::make($plainPassword),
-            'role'      => $data['role'],
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => Hash::make($plainPassword),
+            'role' => $data['role'],
             'is_active' => true,
         ]);
 
@@ -81,9 +81,9 @@ class UserController extends Controller
     public function update(Request $request, User $user): JsonResponse
     {
         $data = $request->validate([
-            'name'      => ['sometimes', 'string', 'max:200'],
-            'email'     => ['sometimes', 'email', 'max:121', Rule::unique('users')->ignore($user->id)],
-            'role'      => ['sometimes', Rule::in(['super_admin', 'admin', 'organizer', 'credential'])],
+            'name' => ['sometimes', 'string', 'max:200'],
+            'email' => ['sometimes', 'email', 'max:121', Rule::unique('users')->ignore($user->id)],
+            'role' => ['sometimes', Rule::in(['super_admin', 'admin', 'organizer', 'credential'])],
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
@@ -132,7 +132,7 @@ class UserController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'role' => $user->role,
-            'isActive' => (bool) ($user->is_active ?? true),
+            'isActive' => (bool)($user->is_active ?? true),
             'lastLogin' => $user->last_login_at?->diffForHumans(),
         ];
     }

@@ -4,12 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\People;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Models\Talk;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TalkController extends Controller
 {
@@ -19,21 +19,21 @@ class TalkController extends Controller
     public function index(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'edition_id'     => ['nullable', 'integer', 'exists:editions,id'],
-            'page'           => ['nullable', 'integer', 'min:1'],
-            'per_page'       => ['nullable', 'integer', 'min:1', 'max:100'],
-            'search'         => ['nullable', 'string', 'max:255'],
-            'kind'           => ['nullable', 'string', 'in:T,W'],
-            'shift'          => ['nullable', 'string', 'in:M,A,W'],
-            'approved'       => ['nullable', 'boolean'],
-            'confirmed'      => ['nullable', 'boolean'],
-            'sort_by'        => ['nullable', 'string', 'in:id,title,kind,shift,approved,confirmed,created_at,updated_at'],
+            'edition_id' => ['nullable', 'integer', 'exists:editions,id'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'search' => ['nullable', 'string', 'max:255'],
+            'kind' => ['nullable', 'string', 'in:T,W'],
+            'shift' => ['nullable', 'string', 'in:M,A,W'],
+            'approved' => ['nullable', 'boolean'],
+            'confirmed' => ['nullable', 'boolean'],
+            'sort_by' => ['nullable', 'string', 'in:id,title,kind,shift,approved,confirmed,created_at,updated_at'],
             'sort_direction' => ['nullable', 'string', 'in:asc,desc'],
         ]);
 
-        $perPage       = $data['per_page']       ?? 15;
-        $search        = trim($data['search']    ?? '');
-        $sortBy        = $data['sort_by']        ?? 'id';
+        $perPage = $data['per_page'] ?? 15;
+        $search = trim($data['search'] ?? '');
+        $sortBy = $data['sort_by'] ?? 'id';
         $sortDirection = strtolower($data['sort_direction'] ?? 'desc');
 
         // speaker_talks.speaker_id references people.id directly — no intermediate speakers table.
@@ -46,33 +46,26 @@ class TalkController extends Controller
             })
             ->leftJoin('people', 'people.id', '=', 'speaker_talks.speaker_id')
             ->whereNull('talks.removed_at')
-            ->when(isset($data['edition_id']), fn($q) =>
-                $q->where('talks.edition_id', $data['edition_id'])
+            ->when(isset($data['edition_id']), fn($q) => $q->where('talks.edition_id', $data['edition_id'])
             )
-            ->when(isset($data['kind']), fn($q) =>
-                $q->where('talks.kind', $data['kind'])
+            ->when(isset($data['kind']), fn($q) => $q->where('talks.kind', $data['kind'])
             )
-            ->when(isset($data['shift']), fn($q) =>
-                $q->where('talks.shift', $data['shift'])
+            ->when(isset($data['shift']), fn($q) => $q->where('talks.shift', $data['shift'])
             )
-            ->when(isset($data['approved']), fn($q) =>
-                $data['approved']
-                    ? $q->whereNotNull('talks.approved_at')
-                    : $q->whereNull('talks.approved_at')
-                )
-            ->when(isset($data['confirmed']), fn($q) =>
-                $data['confirmed']
-                    ? $q->whereNotNull('talks.confirmed_at')
-                    : $q->whereNull('talks.confirmed_at')
-                )
-            ->when($search !== '', fn($q) =>
-            $q->where(fn($sub) =>
-            $sub->where('talks.title',        'like', '%' . $search . '%')
+            ->when(isset($data['approved']), fn($q) => $data['approved']
+                ? $q->whereNotNull('talks.approved_at')
+                : $q->whereNull('talks.approved_at')
+            )
+            ->when(isset($data['confirmed']), fn($q) => $data['confirmed']
+                ? $q->whereNotNull('talks.confirmed_at')
+                : $q->whereNull('talks.confirmed_at')
+            )
+            ->when($search !== '', fn($q) => $q->where(fn($sub) => $sub->where('talks.title', 'like', '%' . $search . '%')
                 ->orWhere('talks.description', 'like', '%' . $search . '%')
-                ->orWhere('people.name',        'like', '%' . $search . '%')
-                ->orWhere('people.email',       'like', '%' . $search . '%')
-                ->orWhere('people.federal_code','like', '%' . $search . '%')
-                ->orWhere('people.phone',       'like', '%' . $search . '%')
+                ->orWhere('people.name', 'like', '%' . $search . '%')
+                ->orWhere('people.email', 'like', '%' . $search . '%')
+                ->orWhere('people.federal_code', 'like', '%' . $search . '%')
+                ->orWhere('people.phone', 'like', '%' . $search . '%')
             )
             )
             ->distinct();
@@ -145,30 +138,30 @@ class TalkController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'title'           => ['required', 'string', 'max:200'],
-            'description'     => ['nullable', 'string', 'max:1000'],
-            'shift'           => ['required', 'in:M,A,W'],
-            'kind'            => ['required', 'in:T,W'],
-            'edition_id'      => ['required', 'exists:editions,id'],
+            'title' => ['required', 'string', 'max:200'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'shift' => ['required', 'in:M,A,W'],
+            'kind' => ['required', 'in:T,W'],
+            'edition_id' => ['required', 'exists:editions,id'],
             'talk_subject_id' => ['nullable', 'exists:talk_subjects,id'],
-            'slide_url'       => ['nullable', 'url', 'max:500'],
-            'slide'           => ['nullable', 'file', 'mimes:pdf,odp,ppt,pptx', 'max:20480'],
-            'speaker_ids'     => ['nullable', 'array'],
-            'speaker_ids.*'   => ['exists:people,id'],
+            'slide_url' => ['nullable', 'url', 'max:500'],
+            'slide' => ['nullable', 'file', 'mimes:pdf,odp,ppt,pptx', 'max:20480'],
+            'speaker_ids' => ['nullable', 'array'],
+            'speaker_ids.*' => ['exists:people,id'],
         ]);
 
         $talk = DB::transaction(function () use ($data, $request) {
             $talk = Talk::create([
-                'title'           => $data['title'],
-                'description'     => $data['description']     ?? null,
-                'shift'           => $data['shift'],
-                'kind'            => $data['kind'],
-                'edition_id'      => $data['edition_id'],
+                'title' => $data['title'],
+                'description' => $data['description'] ?? null,
+                'shift' => $data['shift'],
+                'kind' => $data['kind'],
+                'edition_id' => $data['edition_id'],
                 'talk_subject_id' => $data['talk_subject_id'] ?? null,
-                'slide_url'       => $data['slide_url']       ?? null,
+                'slide_url' => $data['slide_url'] ?? null,
             ]);
 
-            if (! empty($data['speaker_ids'])) {
+            if (!empty($data['speaker_ids'])) {
                 $talk->speakers()->sync($data['speaker_ids']);
             }
 
@@ -197,15 +190,15 @@ class TalkController extends Controller
         }
 
         $data = $request->validate([
-            'title'           => ['sometimes', 'string', 'max:200'],
-            'description'     => ['nullable', 'string', 'max:1000'],
-            'shift'           => ['sometimes', 'in:M,A,W'],
-            'kind'            => ['sometimes', 'in:T,W'],
+            'title' => ['sometimes', 'string', 'max:200'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'shift' => ['sometimes', 'in:M,A,W'],
+            'kind' => ['sometimes', 'in:T,W'],
             'talk_subject_id' => ['nullable', 'exists:talk_subjects,id'],
-            'slide_url'       => ['nullable', 'url', 'max:500'],
-            'slide'           => ['nullable', 'file', 'mimes:pdf,odp,ppt,pptx', 'max:20480'],
-            'speaker_ids'     => ['nullable', 'array'],
-            'speaker_ids.*'   => ['exists:people,id'],
+            'slide_url' => ['nullable', 'url', 'max:500'],
+            'slide' => ['nullable', 'file', 'mimes:pdf,odp,ppt,pptx', 'max:20480'],
+            'speaker_ids' => ['nullable', 'array'],
+            'speaker_ids.*' => ['exists:people,id'],
         ]);
 
         DB::transaction(function () use ($data, $request, $talk) {
@@ -217,7 +210,7 @@ class TalkController extends Controller
                 }
             }
 
-            if (! empty($talkData)) {
+            if (!empty($talkData)) {
                 $talk->update($talkData);
             }
 
@@ -311,7 +304,7 @@ class TalkController extends Controller
             abort(404);
         }
 
-        if (! $talk->slide_file) {
+        if (!$talk->slide_file) {
             abort(404);
         }
 
@@ -325,9 +318,9 @@ class TalkController extends Controller
             },
             200,
             [
-                'Content-Type'        => $this->mimeFromPath($talk->slide_file),
+                'Content-Type' => $this->mimeFromPath($talk->slide_file),
                 'Content-Disposition' => 'inline; filename="' . basename($talk->slide_file) . '"',
-                'Cache-Control'       => 'public, max-age=86400',
+                'Cache-Control' => 'public, max-age=86400',
             ]
         );
     }
@@ -340,7 +333,7 @@ class TalkController extends Controller
      */
     public function speakerPhoto(People $person): StreamedResponse
     {
-        if (! $person->photo) {
+        if (!$person->photo) {
             abort(404);
         }
 
@@ -354,7 +347,7 @@ class TalkController extends Controller
             },
             200,
             [
-                'Content-Type'  => $this->mimeFromPath($person->photo),
+                'Content-Type' => $this->mimeFromPath($person->photo),
                 'Cache-Control' => 'public, max-age=86400',
             ]
         );
@@ -366,34 +359,34 @@ class TalkController extends Controller
     private function format(Talk $t): array
     {
         return [
-            'id'                => $t->id,
-            'edition_id'        => $t->edition_id,
-            'title'             => $t->title,
-            'description'       => $t->description,
-            'shift'             => $t->shift,
-            'kind'              => $t->kind,
-            'approved'          => $t->approved_at !== null,
-            'approved_at'       => $t->approved_at,
-            'confirmed'         => $t->confirmed_at !== null,
-            'confirmed_at'      => $t->confirmed_at,
-            'talk_subject_id'   => $t->talk_subject_id,
+            'id' => $t->id,
+            'edition_id' => $t->edition_id,
+            'title' => $t->title,
+            'description' => $t->description,
+            'shift' => $t->shift,
+            'kind' => $t->kind,
+            'approved' => $t->approved_at !== null,
+            'approved_at' => $t->approved_at,
+            'confirmed' => $t->confirmed_at !== null,
+            'confirmed_at' => $t->confirmed_at,
+            'talk_subject_id' => $t->talk_subject_id,
             'talk_subject_name' => $t->talkSubject?->name,
-            'slide_file_url'    => $t->slide_file
+            'slide_file_url' => $t->slide_file
                 ? route("records.talks.slide", $t->id) // Storage::disk('s3')->url($t->slide_file)
                 : null,
-            'slide_url'         => $t->slide_url,
-            'created_at'        => $t->created_at,
-            'updated_at'        => $t->updated_at,
-            'removed_at'        => $t->removed_at,
-            'speakers'          => $t->speakers->map(fn($s) => [
-                'id'           => $s->id,
-                'name'         => $s->name,
+            'slide_url' => $t->slide_url,
+            'created_at' => $t->created_at,
+            'updated_at' => $t->updated_at,
+            'removed_at' => $t->removed_at,
+            'speakers' => $t->speakers->map(fn($s) => [
+                'id' => $s->id,
+                'name' => $s->name,
                 'federal_code' => $s->federal_code,
-                'email'        => $s->email,
-                'phone'        => $s->phone,
-                'bio'          => $s->bio,
-                'website'      => $s->site,
-                'photo_url'    => $s->photo
+                'email' => $s->email,
+                'phone' => $s->phone,
+                'bio' => $s->bio,
+                'website' => $s->site,
+                'photo_url' => $s->photo
                     ? route("records.talks.speaker-photo", $s->id) // Storage::disk('s3')->url($s->photo)
                     : null,
             ])->toArray(),
@@ -404,16 +397,16 @@ class TalkController extends Controller
     {
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
-        return match($extension) {
+        return match ($extension) {
             'jpg', 'jpeg' => 'image/jpeg',
-            'png'         => 'image/png',
-            'gif'         => 'image/gif',
-            'webp'        => 'image/webp',
-            'pdf'         => 'application/pdf',
-            'odp'         => 'application/vnd.oasis.opendocument.presentation',
-            'ppt'         => 'application/vnd.ms-powerpoint',
-            'pptx'        => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            default       => 'application/octet-stream',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'pdf' => 'application/pdf',
+            'odp' => 'application/vnd.oasis.opendocument.presentation',
+            'ppt' => 'application/vnd.ms-powerpoint',
+            'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            default => 'application/octet-stream',
         };
     }
 }

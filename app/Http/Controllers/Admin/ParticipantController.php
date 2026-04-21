@@ -17,12 +17,12 @@ class ParticipantController extends Controller
     public function index(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'edition_id'      => ['nullable', 'integer', 'exists:editions,id'],
-            'page'            => ['nullable', 'integer', 'min:1'],
-            'per_page'        => ['nullable', 'integer', 'min:1', 'max:100'],
-            'search'          => ['nullable', 'string', 'max:255'],
-            'sort_by'         => ['nullable', 'string', 'in:id,name,email,phone,federal_code,confirmed,created_at,updated_at'],
-            'sort_direction'  => ['nullable', 'string', 'in:asc,desc'],
+            'edition_id' => ['nullable', 'integer', 'exists:editions,id'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'search' => ['nullable', 'string', 'max:255'],
+            'sort_by' => ['nullable', 'string', 'in:id,name,email,phone,federal_code,confirmed,created_at,updated_at'],
+            'sort_direction' => ['nullable', 'string', 'in:asc,desc'],
         ]);
 
         $perPage = $data['per_page'] ?? 15;
@@ -124,25 +124,25 @@ class ParticipantController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'name'         => ['required', 'string', 'max:255'],
-            'email'        => ['required', 'email', 'max:255'],
-            'phone'        => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
+            'phone' => ['required', 'string', 'max:255'],
             'federal_code' => ['nullable', 'string', 'max:255'],
-            'edition_id'   => ['required', 'exists:editions,id'],
+            'edition_id' => ['required', 'exists:editions,id'],
         ]);
 
         $participant = DB::transaction(function () use ($data) {
             $person = People::create([
-                'name'         => $data['name'],
-                'email'        => $data['email'],
-                'phone'        => $data['phone'],
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'phone' => $data['phone'],
                 'federal_code' => $data['federal_code'] ?? null,
-                'use_free'     => false,
+                'use_free' => false,
             ]);
 
             return Participant::create([
                 'edition_id' => $data['edition_id'],
-                'people_id'  => $person->id,
+                'people_id' => $person->id,
             ]);
         });
 
@@ -171,11 +171,11 @@ class ParticipantController extends Controller
         }
 
         $data = $request->validate([
-            'name'         => ['sometimes', 'string', 'max:255'],
-            'email'        => ['sometimes', 'email', 'max:255'],
-            'phone'        => ['sometimes', 'string', 'max:255'],
+            'name' => ['sometimes', 'string', 'max:255'],
+            'email' => ['sometimes', 'email', 'max:255'],
+            'phone' => ['sometimes', 'string', 'max:255'],
             'federal_code' => ['nullable', 'string', 'max:255'],
-            'edition_id'   => ['sometimes', 'exists:editions,id'],
+            'edition_id' => ['sometimes', 'exists:editions,id'],
             'presented_at' => ['nullable', 'date'],
         ]);
 
@@ -266,22 +266,22 @@ class ParticipantController extends Controller
     private function format(Participant $participant): array
     {
         return [
-            'id'                        => $participant->id,
-            'edition_id'                => $participant->edition_id,
-            'people_id'                 => $participant->people_id,
-            'name'                      => $participant->person?->name,
-            'email'                     => $participant->person?->email,
-            'phone'                     => $participant->person?->phone,
-            'federal_code'              => $participant->person?->federal_code,
-            'presented_at'              => $participant->presented_at,
-            'confirmed'                 => $participant->presented_at !== null,
+            'id' => $participant->id,
+            'edition_id' => $participant->edition_id,
+            'people_id' => $participant->people_id,
+            'name' => $participant->person?->name,
+            'email' => $participant->person?->email,
+            'phone' => $participant->person?->phone,
+            'federal_code' => $participant->person?->federal_code,
+            'presented_at' => $participant->presented_at,
+            'confirmed' => $participant->presented_at !== null,
             'prizedraw_confirmation_at' => $participant->prizedraw_confirmation_at,
-            'prizedraw_winner_at'       => $participant->prizedraw_winner_at,
-            'prizedraw_order'           => $participant->prizedraw_order,
-            'prizedraw_description'     => $participant->prizedraw_description,
-            'created_at'                => $participant->created_at,
-            'updated_at'                => $participant->updated_at,
-            'removed_at'                => $participant->removed_at,
+            'prizedraw_winner_at' => $participant->prizedraw_winner_at,
+            'prizedraw_order' => $participant->prizedraw_order,
+            'prizedraw_description' => $participant->prizedraw_description,
+            'created_at' => $participant->created_at,
+            'updated_at' => $participant->updated_at,
+            'removed_at' => $participant->removed_at,
         ];
     }
 }

@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Speaker;
 use App\Models\Person;
-use Illuminate\Http\Request;
+use App\Models\Speaker;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -35,26 +35,26 @@ class SpeakerController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'name'       => ['required', 'string', 'max:200'],
-            'email'      => ['required', 'email', 'max:121'],
-            'phone'      => ['required', 'string', 'max:20'],
-            'cpf'        => ['nullable', 'string', 'max:14'],
+            'name' => ['required', 'string', 'max:200'],
+            'email' => ['required', 'email', 'max:121'],
+            'phone' => ['required', 'string', 'max:20'],
+            'cpf' => ['nullable', 'string', 'max:14'],
             'edition_id' => ['required', 'exists:editions,id'],
-            'photo'      => ['nullable', 'image', 'max:4096'],
+            'photo' => ['nullable', 'image', 'max:4096'],
         ]);
 
         $speaker = DB::transaction(function () use ($data, $request) {
             $person = Person::create([
-                'name'  => $data['name'],
+                'name' => $data['name'],
                 'email' => $data['email'],
                 'phone' => $data['phone'],
-                'cpf'   => $data['cpf'] ?? null,
+                'cpf' => $data['cpf'] ?? null,
             ]);
 
             $speaker = Speaker::create([
-                'person_id'  => $person->id,
+                'person_id' => $person->id,
                 'edition_id' => $data['edition_id'],
-                'confirmed'  => false,
+                'confirmed' => false,
             ]);
 
             if ($request->hasFile('photo')) {
@@ -74,19 +74,19 @@ class SpeakerController extends Controller
     public function update(Request $request, Speaker $speaker): JsonResponse
     {
         $data = $request->validate([
-            'name'  => ['sometimes', 'string', 'max:200'],
+            'name' => ['sometimes', 'string', 'max:200'],
             'email' => ['sometimes', 'email', 'max:121'],
             'phone' => ['sometimes', 'string', 'max:20'],
-            'cpf'   => ['nullable', 'string', 'max:14'],
+            'cpf' => ['nullable', 'string', 'max:14'],
             'photo' => ['nullable', 'image', 'max:4096'],
         ]);
 
         DB::transaction(function () use ($data, $request, $speaker) {
             $speaker->person->update(array_filter([
-                'name'  => $data['name']  ?? null,
+                'name' => $data['name'] ?? null,
                 'email' => $data['email'] ?? null,
                 'phone' => $data['phone'] ?? null,
-                'cpf'   => $data['cpf']   ?? null,
+                'cpf' => $data['cpf'] ?? null,
             ]));
 
             if ($request->hasFile('photo')) {
@@ -120,18 +120,18 @@ class SpeakerController extends Controller
     private function format(Speaker $s): array
     {
         return [
-            'id'         => $s->id,
-            'name'       => $s->person->name,
-            'email'      => $s->person->email,
-            'phone'      => $s->person->phone,
-            'cpf'        => $s->person->cpf,
-            'confirmed'  => (bool) $s->confirmed,
+            'id' => $s->id,
+            'name' => $s->person->name,
+            'email' => $s->person->email,
+            'phone' => $s->person->phone,
+            'cpf' => $s->person->cpf,
+            'confirmed' => (bool)$s->confirmed,
             'edition_id' => $s->edition_id,
-            'photo_url'  => $s->photo_path ? Storage::disk('s3')->url($s->photo_path) : null,
-            'talks'      => $s->talks->map(fn($t) => [
-                'id'    => $t->id,
+            'photo_url' => $s->photo_path ? Storage::disk('s3')->url($s->photo_path) : null,
+            'talks' => $s->talks->map(fn($t) => [
+                'id' => $t->id,
                 'title' => $t->title,
-                'kind'  => $t->kind,
+                'kind' => $t->kind,
             ])->toArray(),
         ];
     }

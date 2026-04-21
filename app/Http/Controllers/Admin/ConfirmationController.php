@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Participant;
 use App\Models\Collaborator;
+use App\Models\Participant;
 use App\Models\Talk;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ConfirmationController extends Controller
 {
@@ -20,11 +20,11 @@ class ConfirmationController extends Controller
             ->orderBy('id')
             ->get()
             ->map(fn($p) => [
-                'id'        => $p->id,
-                'name'      => $p->person->name,
-                'email'     => $p->person->email,
-                'phone'     => $p->person->phone,
-                'confirmed' => (bool) $p->confirmed,
+                'id' => $p->id,
+                'name' => $p->person->name,
+                'email' => $p->person->email,
+                'phone' => $p->person->phone,
+                'confirmed' => (bool)$p->confirmed,
             ]);
 
         return response()->json($items);
@@ -39,11 +39,11 @@ class ConfirmationController extends Controller
             ->orderBy('id')
             ->get()
             ->map(fn($c) => [
-                'id'        => $c->id,
-                'name'      => $c->person->name,
-                'email'     => $c->person->email,
-                'phone'     => $c->person->phone,
-                'confirmed' => (bool) $c->confirmed,
+                'id' => $c->id,
+                'name' => $c->person->name,
+                'email' => $c->person->email,
+                'phone' => $c->person->phone,
+                'confirmed' => (bool)$c->confirmed,
             ]);
 
         return response()->json($items);
@@ -58,10 +58,10 @@ class ConfirmationController extends Controller
             ->orderBy('id')
             ->get()
             ->map(fn($t) => [
-                'id'        => $t->id,
-                'title'     => $t->title,
-                'speakers'  => $t->speakers->map(fn($s) => $s->person->name)->implode(', '),
-                'confirmed' => (bool) $t->confirmed,
+                'id' => $t->id,
+                'title' => $t->title,
+                'speakers' => $t->speakers->map(fn($s) => $s->person->name)->implode(', '),
+                'confirmed' => (bool)$t->confirmed,
             ]);
 
         return response()->json($items);
