@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Throwable;
 
 class Edition extends Model
 {
@@ -42,5 +43,15 @@ class Edition extends Model
     public function organizers()
     {
         return $this->hasMany(Organizer::class, 'edition_id');
+    }
+
+    public function getOptionsAttribute($value)
+    {
+        try {
+            $decoded = json_decode($value);
+            return json_last_error() === JSON_ERROR_NONE ? $decoded : null;
+        } catch (Throwable $e) {
+            return null;
+        }
     }
 }
