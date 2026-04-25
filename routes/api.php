@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\EditionPlaceController;
 use App\Http\Controllers\CertificatesReleaseController;
 use App\Http\Controllers\CertificatesDownloadController;
 use App\Http\Controllers\CertificatesSearchController;
@@ -40,6 +41,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Records
     Route::prefix('records')->name('records.')->group(function () {
+
+        Route::apiResource('edition-places', EditionPlaceController::class);
 
         Route::apiResource('participants',  ParticipantController::class);
 //        Route::patch('participants/{participant}/confirm',

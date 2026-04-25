@@ -25,6 +25,11 @@ class Edition extends Model
         'removed_at' => 'datetime',
     ];
 
+    public function places()
+    {
+        return $this->hasMany(EditionPlace::class, 'edition_id');
+    }
+
     public function talks()
     {
         return $this->hasMany(Talk::class, 'edition_id');
