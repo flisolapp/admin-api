@@ -59,10 +59,15 @@ class AttendanceController extends Controller
     /**
      * PATCH /api/attendance/{kind}/{id}/check-in
      */
-    public function toggleCheckIn(Request $request, string $kind, int $id): JsonResponse
+    public function toggleCheckIn(Request $request, string $kind, int $id, $data = null): JsonResponse
     {
         $data = $request->validate([
             'checked_in' => ['required', 'boolean'],
+            'data' => ['nullable', 'array'],
+            'data.name' => ['nullable', 'string', 'max:255'],
+            'data.federal_code' => ['nullable', 'string', 'max:255'],
+            'data.email' => ['nullable', 'email', 'max:255'],
+            'data.phone' => ['nullable', 'string', 'max:255'],
         ]);
 
         $kind = strtolower($kind);
@@ -88,6 +93,22 @@ class AttendanceController extends Controller
             $speakerTalk->talk->update([
                 'presented_at' => $data['checked_in'] ? now() : null,
             ]);
+
+            if ($data['checked_in'] === true && isset($data['data']) && is_array($data['data'])) {
+                $personData = collect($data['data'])
+                    ->only([
+                        'name',
+                        'federal_code',
+                        'email',
+                        'phone',
+                    ])
+                    ->filter(fn ($value) => $value !== null)
+                    ->toArray();
+
+                if (!empty($personData)) {
+                    $speakerTalk->speaker->update($personData);
+                }
+            }
 
             $speakerTalk->refresh()->load(['speaker', 'talk', 'talk.talkSubject']);
             $speakerTalk->talk->refresh();
@@ -126,6 +147,22 @@ class AttendanceController extends Controller
         $record->update([
             $field => $data['checked_in'] ? now() : null,
         ]);
+
+        if ($data['checked_in'] === true && isset($data['data']) && is_array($data['data'])) {
+            $personData = collect($data['data'])
+                ->only([
+                    'name',
+                    'federal_code',
+                    'email',
+                    'phone',
+                ])
+                ->filter(fn ($value) => $value !== null)
+                ->toArray();
+
+            if (!empty($personData)) {
+                $record->person->update($personData);
+            }
+        }
 
         $record->refresh()->load(['person', 'edition']);
 
